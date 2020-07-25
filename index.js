@@ -29,7 +29,3 @@ let date =new Date()
 console.log(date);
 setInterval(MongoServerFuncs.ChangeLibPasswords, 60000);
 
-
-
-;
-
