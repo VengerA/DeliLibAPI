@@ -14,9 +14,6 @@ app.use("/user", user);
 app.use("/seat", seat);
 app.use("/library", library);
 
-app.listen(3000, function () {
-  console.log("app listening on port 3000!");
-});
 
 app.get("/", (req, res) => {
   res.json({ message: "API Working" });
