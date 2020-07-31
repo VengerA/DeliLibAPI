@@ -15,17 +15,17 @@ app.use("/seat", seat);
 app.use("/library", library);
 
 app.listen(process.env.PORT || 5000, function () {
-  console.log("app listening on port 3000!");
+  console.log("app listening on port");
 });
 
 app.get("/", (req, res) => {
   res.json({ message: "API Working" });
 });
 
-MongoServerFuncs.InitiateMongoServer();
+// MongoServerFuncs.InitiateMongoServer();
 
-let date =new Date()
+// let date =new Date()
 
-console.log(date);
-setInterval(MongoServerFuncs.ChangeLibPasswords, 60000);
+// console.log(date);
+setInterval(MongoServerFuncs.ChangeLibPasswords, 60000); 
 

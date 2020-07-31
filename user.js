@@ -1,10 +1,12 @@
 const express = require("express");
+const mongoose = require("mongoose")
 const { check, validationResult} = require("express-validator/check");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const router = express.Router();
 const auth = require("./auth");
 const User = require("./user.model");
+const db = require('./db');
 
 router.post(
     "/signup",
@@ -16,10 +18,8 @@ router.post(
             min: 8
         })
         
-    ],
-    
+    ],   
     async (req, res) => {
-        console.log("IStek Geldi");
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({
@@ -36,6 +36,8 @@ router.post(
 
 
         } = req.body;
+        await mongoose.connect(db.MongoDeliDb)
+
         try {
             let user = await User.findOne({
                 email
@@ -53,7 +55,9 @@ router.post(
                 job,
                 password,
                 isSeated : false,
-                seatNum: 0
+                seatNum: 0,
+                isVirtual: false,
+                totalTimeStudied: 0
             });
 
             const salt = await bcrypt.genSalt(10);
@@ -79,6 +83,7 @@ router.post(
                     });
                 }
             );
+            mongoose.disconnect()
         } catch (err) {
             console.log(err.message);
             res.status(500).send("Error Accured While Saving");
@@ -103,7 +108,7 @@ router.post(
           errors: errors.array()
         });
       }
-  
+      await mongoose.connect(db.MongoDeliDb)
       const { email, password } = req.body;
       try {
         let user = await User.findOne({
@@ -139,6 +144,7 @@ router.post(
             });
           }
         );
+        mongoose.disconnect()
       } catch (e) {
         console.error(e);
         res.status(500).json({
@@ -148,26 +154,30 @@ router.post(
     }
   );
 
-router.get("/me", auth, async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id);
-        res.json(user);
-    } catch (e) {
-        res.send({ message: "Error in Fetching user" });
-    }
-});
+// router.get("/me", auth, async (req, res) => {
+//     await mongoose.connect("mongodb+srv://udago:udago@delilib.gykr1.mongodb.net/DeliLib?retryWrites=true&w=majority")
+//     try {
+//         const user = await User.findById(req.user.id);
+//         res.json(user);
+//     } catch (e) {
+//         res.send({ message: "Error in Fetching user" });
+//     }
+// });
 
 router.post("/delete", auth, async (req,res) => {
     try{
-        await User.deleteOne({"email" : req.body.email});
-        res.send({messeage: "Success"})
+      await mongoose.connect(db.MongoDeliDb)
+      await User.deleteOne({"email" : req.body.email});
+      res.send({messeage: "Success"})
+      mongoose.disconnect()
     } catch(err){
         res.send ({messeage: "Error In Deleting User "});
     }
 })
 
 router.get("/all", auth ,async (req, res)=> {
-    // try{
+      try{
+        await mongoose.connect(db.MongoDeliDb)
         await User.find()
         .then(result => {
             console.log(result);
@@ -176,10 +186,16 @@ router.get("/all", auth ,async (req, res)=> {
         .catch(err =>
             res.status(400).json({messeage: err})
         )
+        mongoose.disconnect()
+      }
+      catch(err){
+        throw(err)
+      }
 })
 
 router.post("/changePasswd", auth ,async (req, res)=> {
-    // try{
+    try{
+        await mongoose.connect(db.MongoDeliDb)
         const email = req.body.email
         // console.log(email)
         let user = await User.findOne({email})
@@ -218,58 +234,11 @@ router.post("/changePasswd", auth ,async (req, res)=> {
         .catch(err =>
             res.status(400).json({msg: "An Error Accured"})
         )
+        }
+      catch(err){
+        throw(err)
+      }
 })
 
-router.post("/sit", auth ,async (req, res)=> {
-  try{
-      let query = {
-          "email" : req.body.email
-      }
-      let update = {
-          "isSeated" : true,
-          "seatNum": req.body.seatNum,
-          "timeStarted": req.body.time
-      }
-      let options = {
-          "upsert" : false
-      }
-      
-      await User.updateOne(query, update, options)
-      .then(result => {
-          console.log(result);
-          res.status(200).json({result});
-      }) 
-      .catch(err =>
-          res.status(400).json({messeage: err})
-      )
-    }
-    catch(err){
-      res.status(500).json({messeage: err})
-    }
-})
-
-router.post("/stand", auth ,async (req, res)=> {
-  // try{
-      let query = {
-          "email" : req.body.email
-      }
-      let update = {
-          "isSeated" : false,
-          "seatNum": 0,
-          "timeStarted": null
-      }
-      let options = {
-          "upsert" : false
-      }
-      
-      await User.updateOne(query, update, options)
-      .then(result => {
-          console.log(result);
-          res.status(200).json({result});
-      }) 
-      .catch(err =>
-          res.status(400).json({messeage: err})
-      )
-})
 
 module.exports = router;

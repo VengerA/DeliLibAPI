@@ -30,6 +30,10 @@ const Library = mongoose.model(
     ipAdress: {
         type : String,
         required: false
+    },
+    virtualSeatCount: {
+        type : Number,
+        required: true
     }
   })
 );

@@ -2,35 +2,39 @@ const mongoose = require("mongoose");
 const MongoClient = require('mongodb').MongoClient;
 const Library = require('./library.model');
 const Str = require('@supercharge/strings');
+const User = require('./user.model');
 
-const MongoUri = "mongodb+srv://test:test@node-auth-md2ex.mongodb.net/node-auth?retryWrites=true&w=majority";
+const MongoUri = "mongodb+srv://udago:udago@delilib.gykr1.mongodb.net";
+const MongoDeliDb = "mongodb+srv://udago:udago@delilib.gykr1.mongodb.net/DeliLib?retryWrites=true&w=majority";
+const MongoSeatsDb = "mongodb+srv://udago:udago@delilib.gykr1.mongodb.net/Seats?retryWrites=true&w=majority";
 mongoose.set('useNewUrlParser', true);
 mongoose.set('useFindAndModify', false);
 mongoose.set('useCreateIndex', true);
 mongoose.set('useUnifiedTopology', true);
 
-const InitiateMongoServer = async () => {
-  try {
+// const InitiateMongoServer = async () => {
+//   try {
   
-    await mongoose.connect(MongoUri)
-    console.log("Connected to DB !!");
-  } catch (e) {
-    throw e;
-  }
-};
+//     await mongoose.connect(MongoUri)
+//     .then(res => {
+//       res.createConnection('DeliLib?retryWrites=true&w=majority')
+//     })
+//   } catch (e) {
+//     throw e;
+//   }
+// };
+
+
+const deliLibdb = mongoose.createConnection(MongoDeliDb);
+const seatsDb = mongoose.createConnection(MongoSeatsDb);
 
 const CreateSeatCollection = async  (name) => {
   try {
-    MongoClient.connect(MongoUri, function(err, db) {
-      if (err) throw err;
-      var dbo = db.db("node-auth");
-      
-      dbo.createCollection(name, function(err, res) {
+      seatsDb.createCollection(name, function(err, res) {
         if (err) throw err;
         console.log("Collection created!");
         db.close();
       });
-    });
   }
   catch(err){
     throw(err)
@@ -41,31 +45,33 @@ const ChangeLibPasswords = async () => {
   let  query  = {
     isAvailable : true
   }
-  await Library.find(query)
-  .then(result => {
-      result.forEach(item =>  {
+  // console.log("g")
+  await deliLibdb.collection('libraries').find(query).toArray(function(err,result) {
+      if(err){
+        throw(err)
+      }
+      // console.log(result)
+      result.map(item =>  {
+        // console.log(item.libName)
         Changer(item.libName)
       })
   })
 }
 
 const Changer = async (name)  => {
+  // console.log(name)
   let query = {
     "libName" : name
   }
   let update = {
-    "password" : Str.random(4)
+    $set:{
+      "password" : Str.random(4)
+    } 
   }
-  let options = {
-    "upsert" : false
-  }
-
-  let date = new Date();
   
-  await Library.updateOne(query, update, options)
-
-  .then(res => {
-    console.log(name + " sifresi degisti" + "   " + date.getMinutes());
+  await deliLibdb.collection('libraries').updateOne(query, update)
+  .then(result=> {
+    // console.log("ahasdhashdß")
   })
   .catch(err => {
     console.log(err)
@@ -73,7 +79,10 @@ const Changer = async (name)  => {
 }
 
 module.exports = {
-  InitiateMongoServer,
   CreateSeatCollection,
-  ChangeLibPasswords
+  ChangeLibPasswords,
+  MongoDeliDb,
+  MongoSeatsDb,
+  deliLibdb,
+  seatsDb,
 };

@@ -23,6 +23,10 @@ const User = mongoose.model(
       type : String,
       required: false
     },
+    library: {
+      type : String,
+      required: false
+    },
     isSeated : {
       type : Boolean,
       required: false
@@ -32,8 +36,16 @@ const User = mongoose.model(
       required: false
     },
     timeStarted: {
-      type : String,
+      type : Date,
       required: false
+    },
+    isTrue: { 
+      type : Boolean, 
+      required: false
+    },
+    totalTimeStudied: {
+      type: Number,
+      required: true
     }
   })
 );

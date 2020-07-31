@@ -4,7 +4,7 @@ const Seat = mongoose.model(
   "Seat",
   new mongoose.Schema({
     seatNum : { 
-        type : Number,
+        type : String,
         required: true
     },
     isAvailable: {
@@ -14,11 +14,19 @@ const Seat = mongoose.model(
     email: {
       type : String, 
       required: false, 
-  },
+    },
     group : {
       type : String, 
-      required: true, 
-  }
+      required: false, 
+    },
+    isVirtual : {
+      type : Boolean,
+      required: true
+    },
+    timeStarted: {
+      type: Date,
+      required: false
+    }
   })
 );
 
