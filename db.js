@@ -33,7 +33,6 @@ const CreateSeatCollection = async  (name) => {
       seatsDb.createCollection(name, function(err, res) {
         if (err) throw err;
         console.log("Collection created!");
-        db.close();
       });
   }
   catch(err){
@@ -46,16 +45,21 @@ const ChangeLibPasswords = async () => {
     isAvailable : true
   }
   // console.log("g")
-  await deliLibdb.collection('libraries').find(query).toArray(function(err,result) {
+  try{
+    await deliLibdb.collection('libraries').find(query).toArray(function(err, result){
       if(err){
         throw(err)
       }
-      // console.log(result)
       result.map(item =>  {
         // console.log(item.libName)
         Changer(item.libName)
       })
-  })
+    })
+      
+  }
+  catch(err){
+    throw(err)
+  }
 }
 
 const Changer = async (name)  => {

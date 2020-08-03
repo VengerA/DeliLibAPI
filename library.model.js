@@ -34,6 +34,10 @@ const Library = mongoose.model(
     virtualSeatCount: {
         type : Number,
         required: true
+    },
+    groupNames : {
+        type : Array,
+        required: true
     }
   })
 );

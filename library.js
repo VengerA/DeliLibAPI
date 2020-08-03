@@ -31,7 +31,7 @@ router.post("/add", auth, async(req, res) => {
 
             MongoServerFuncs.CreateSeatCollection(seatCollectionName);
 
-            library = new Library({
+            library = {
                 libName,
                 seatCollectionName,
                 isAvailable,
@@ -39,10 +39,10 @@ router.post("/add", auth, async(req, res) => {
                 groupCount : 0,
                 virtualSeatCount: 0,
                 password: Str.random(4),
-
-
-            });
-            await library.save()
+                ipAdress,
+                groupNames : []
+            };
+            await db.deliLibdb.collection('libraries').insertOne(library)
             .then(result => {
                 res.status(200).json({
                     msg: "Library added succesfully"
@@ -62,17 +62,16 @@ router.post("/add", auth, async(req, res) => {
 
 router.get('/all', auth, async (req, res)=> {
     try{
-        await db.deliLibdb.collection('libraries').find().sort({
-            libName: 1
-        }).toArray(function(err, result){
+        await db.deliLibdb.collection('libraries').find({},{sort: {libName: 1}}).toArray(function(err, result){
             if(err){
-                throw(err)
+                res.status(500).send(err)
+            }else {
+                res.status(200).send(result)
             }
-            res.status(200).send(result)
         })
     }
     catch(err){
-        throw(err)
+        res.status(500).send(err)
     }
 })
 
@@ -92,6 +91,26 @@ router.get('/password', auth, async (req, res) => {
     }
 })
 
+router.post('/get', auth, async(req,res) => {
+    try {
+        await db.deliLibdb.collection('libraries').findOne(
+            {'libName': req.body.library}
+        )
+        .then(result => {
+            res.status(200).send(result)
+        })
+        .catch(err=>{
+            res.status(400).json({
+                msg: "An error accured in Library fetching"
+            })
+        })
+    }
+    catch(err){
+        res.status(500).json({
+            msg: "An error accured in server"
+        })
+    }
+})
 
 
 module.exports = router;

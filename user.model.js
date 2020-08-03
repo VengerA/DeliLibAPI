@@ -32,14 +32,14 @@ const User = mongoose.model(
       required: false
     },
     seatNum: {
-      type : Number,
+      type : String,
       required: false
     },
     timeStarted: {
       type : Date,
       required: false
     },
-    isTrue: { 
+    isVirtual: { 
       type : Boolean, 
       required: false
     },

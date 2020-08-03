@@ -48,7 +48,7 @@ router.post(
                 });
             }
 
-            user = new User({
+            user = {
                 firstname,
                 lastname,
                 email,
@@ -57,13 +57,19 @@ router.post(
                 isSeated : false,
                 seatNum: 0,
                 isVirtual: false,
-                totalTimeStudied: 0
-            });
+                totalTimeStudied: 0,
+                library: ""
+            };
 
             const salt = await bcrypt.genSalt(10);
             user.password = await bcrypt.hash(password, salt);
 
-            await user.save();
+            await db.deliLibdb.collection('users').insertOne(user)
+            .catch(err=>{
+              res.status(400).json({
+                msg: 'Giris Basarisiz'
+              })
+            })
 
             const payload = {
                 user: {
@@ -83,7 +89,7 @@ router.post(
                     });
                 }
             );
-            mongoose.disconnect()
+            // mongoose.disconnect()
         } catch (err) {
             console.log(err.message);
             res.status(500).send("Error Accured While Saving");
@@ -108,10 +114,10 @@ router.post(
           errors: errors.array()
         });
       }
-      await mongoose.connect(db.MongoDeliDb)
+      console.log("istek geldi")
       const { email, password } = req.body;
       try {
-        let user = await User.findOne({
+        let user = await db.deliLibdb.collection('users').findOne({
           email
         });
         if (!user)
@@ -144,7 +150,7 @@ router.post(
             });
           }
         );
-        mongoose.disconnect()
+        // mongoose.disconnect()
       } catch (e) {
         console.error(e);
         res.status(500).json({
@@ -154,24 +160,25 @@ router.post(
     }
   );
 
-// router.get("/me", auth, async (req, res) => {
-//     await mongoose.connect("mongodb+srv://udago:udago@delilib.gykr1.mongodb.net/DeliLib?retryWrites=true&w=majority")
-//     try {
-//         const user = await User.findById(req.user.id);
-//         res.json(user);
-//     } catch (e) {
-//         res.send({ message: "Error in Fetching user" });
-//     }
-// });
+router.post("/me", auth, async (req, res) => {
+    try {
+        console.log(req.body.email)
+        const user = await db.deliLibdb.collection('users').findOne({
+          email : req.body.email
+        });
+        res.status(200).json(user);
+    } catch (e) {
+        res.send(e);
+    }
+});
 
 router.post("/delete", auth, async (req,res) => {
     try{
-      await mongoose.connect(db.MongoDeliDb)
+      
       await User.deleteOne({"email" : req.body.email});
       res.send({messeage: "Success"})
-      mongoose.disconnect()
     } catch(err){
-        res.send ({messeage: "Error In Deleting User "});
+        res.status(400).send ({messeage: "Error In Deleting User "});
     }
 })
 
@@ -186,7 +193,6 @@ router.get("/all", auth ,async (req, res)=> {
         .catch(err =>
             res.status(400).json({messeage: err})
         )
-        mongoose.disconnect()
       }
       catch(err){
         throw(err)
@@ -195,19 +201,19 @@ router.get("/all", auth ,async (req, res)=> {
 
 router.post("/changePasswd", auth ,async (req, res)=> {
     try{
-        await mongoose.connect(db.MongoDeliDb)
         const email = req.body.email
         // console.log(email)
-        let user = await User.findOne({email})
+        let user = await db.deliLibdb.collection('users').findOne({
+          email
+        })
         let query = {
             "email" : req.body.email
         }
         const salt = await bcrypt.genSalt(10);
         let update = {
+          $set: {
             "password": await bcrypt.hash(req.body.password, salt)
-        }
-        let options = {
-            "upsert" : false
+          }  
         }
 
         const isMatch = await bcrypt.compare(req.body.oldPassword, user.password);
@@ -224,9 +230,8 @@ router.post("/changePasswd", auth ,async (req, res)=> {
         }
         
         
-        await User.updateOne(query, update, options)
+        await db.deliLibdb.collection('users').updateOne(query, update)
         .then(result => {
-            // console.log(result);
             res.status(200).json({
                 msg: "Sifre Degisimi Basarili"
             });

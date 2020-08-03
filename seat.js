@@ -18,6 +18,7 @@ router.post("/add", auth, async(req, res) => {
         let  seat  = await  db.seatsDb.collection(seatCollectionName).findOne({
             seatNum
         })
+        console.log(seat)
         if(seat){
             res.status('400').json({
                 msg: "This Seat Already Exists"
@@ -31,9 +32,11 @@ router.post("/add", auth, async(req, res) => {
                 email: "",
                 group
             }
+            console.log(libName)
             let lib = await db.deliLibdb.collection('libraries').findOne({
-                "libName" : libName
+                libName
             })
+            console.log(lib)
 
             let groupCheck = await db.seatsDb.collection(seatCollectionName).findOne({
                 group
@@ -48,6 +51,9 @@ router.post("/add", auth, async(req, res) => {
                         $set:{
                             "seatCount" : lib.seatCount + 1,
                             "groupCount": lib.groupCount + 1
+                        },
+                        $addToSet: {
+                            groupNames: group
                         }
                         
                     }
@@ -82,17 +88,20 @@ router.post("/add", auth, async(req, res) => {
 router.post("/hold", auth, async(req,res)  => {
     const email = req.body.email;
     const seatCollectionName = req.body.seatCollectionName;
+    console.log(seatCollectionName);
     const library = req.body.library;
-    const ipAdress = req.body.ipAdress
+    const ipAdress = req.body.ipAdress;
+    const password = req.body.password
     const date = new Date();
+    const group = req.body.group
     try{
         let seat = {}
         let user = {}
        let lib =  await db.deliLibdb.collection('libraries').findOne({
            libName: library
        })
-       console.log(lib.ipAdress === ipAdress)
-       if(lib.ipAdress === ipAdress){
+    //    console.log(lib.ipAdress === ipAdress)
+       if(lib.ipAdress === ipAdress && lib.password === password){
 
             seat = await db.seatsDb.collection(seatCollectionName).findOne({
                 email
@@ -116,9 +125,11 @@ router.post("/hold", auth, async(req,res)  => {
                 }
             
                 else{
+                    // console.log(query)
                     let query = {
-                        "seatNum": req.body.seatNum
+                        "seatNum": req.body.seatNum.toString()
                     }
+                    console.log(query)
                     let update = {
                         $set:{
                             "isAvailable" : 0,
@@ -138,13 +149,19 @@ router.post("/hold", auth, async(req,res)  => {
                             "seatNum": req.body.seatNum,
                             "library": library,
                             "seatCollectionName": req.body.seatCollectionName,
-                            "timeStarted": date
+                            "timeStarted": date,
+                            "group": group
                         }
                     }
                     let options1 = {
                         "upsert" : false
                     }
+
+                    console.log(await db.seatsDb.collection(seatCollectionName).findOne(query))
                     await db.seatsDb.collection(seatCollectionName).updateOne(query, update)
+                    .then( () => {
+                        console.log("fak")
+                    })
                     .catch(err=> {
                         // mongoose.disconnect()
                         sitUser(0, query1, update1, seatCollectionName, req.body.seatNum) 
@@ -152,8 +169,7 @@ router.post("/hold", auth, async(req,res)  => {
                             msg:"An error accured"
                         })
                     })
-                    console.log(query1);
-                    console.log(update1);
+                    
                     await db.deliLibdb.collection('users').updateOne(query1,update1)
                     .then(result => {
                         res.status(200).json({
@@ -168,9 +184,9 @@ router.post("/hold", auth, async(req,res)  => {
                 }
             }
        }else {
-           res.status(400).json({
-               msg: "Your Ip Adress Does Not Match"
-           })
+            res.status(400).json({
+                msg: "Your Ip Adress Does Not Match"
+            })
        }
     }
     catch(err){
@@ -236,7 +252,7 @@ router.post("/unhold", auth , async(req,res) => {
     let date2 = new Date()
     const email = req.body.email
     let query = {
-        "seatNum" : req.body.seatNum
+        "seatNum" : req.body.seatNum.toString()
     }
     let update = {
         $set: {
@@ -252,7 +268,7 @@ router.post("/unhold", auth , async(req,res) => {
 
     let date = user.timeStarted;
 
-    let totalTimeWorked = Math.ceil((date2-date)/1000)+ user.totalTimeWorked;
+    let totalTimeStudied = Math.ceil((date2-date)/1000);
 
     await db.seatsDb.collection(req.body.seatCollectionName).updateOne(query, update)
     .catch(err => res.status(400).json({messeage: err}))
@@ -266,7 +282,8 @@ router.post("/unhold", auth , async(req,res) => {
             "seatNum": "0",
             "library" : "",
             "seatCollectionName": "",
-            "totalTimeWorked": totalTimeWorked + user.totalTimeWorked
+            "totalTimeStudied": totalTimeStudied + user.totalTimeStudied,
+            "group": ""
         }
     }
 
@@ -293,12 +310,37 @@ router.post("/all", auth ,async (req, res)=> {
         let sort = {
             seatNum: 1
         }
-        await db.seatsDb.collection(seatCollectionName).find(query).sort(sort).toArray(function(err, result){
-            if(err){
-                throw(err)
-            }
-            res.status(200).send(result)
+        await db.seatsDb.collection(seatCollectionName).find({group: group}).forEach(function(doc){
+            db.seatsDb.collection(seatCollectionName).updateOne(
+                {
+                    seatNum: doc.seatNum,
+                    group: group
+                },
+                {
+                    $set: {
+                        seatNum : parseInt(doc.seatNum)
+                    }
+                }
+            )
         })
+
+        let result = await db.seatsDb.collection(seatCollectionName).find(query).sort({seatNum: 1}).toArray()
+
+        await db.seatsDb.collection(seatCollectionName).find({group: group}).forEach(function(doc){
+            db.seatsDb.collection(seatCollectionName).updateOne(
+                {
+                    seatNum: doc.seatNum,
+                    group: group
+                },
+                {
+                    $set: {
+                        seatNum : doc.seatNum.toString()
+                    }
+                }
+            )
+        })
+
+        res.status(200).send(result)
     }
     catch(err){
         throw(err)
@@ -320,43 +362,54 @@ router.post('/addVirtual', auth, async (req,res) => {
         })
 
         if(seat){
+            console.log(seat)
             res.status(400).json({
                 msg: "You already have a virtual desk"
             })
+ 
         }
         if(user.isSeated){
             res.status(400).json({
                 msg: " You already have a desk"
             })
-        }
-        await db.seatsDb.collection(seatCollectionName).insertOne(
-            {
-                seatNum: "Virtual",
-                group: "Virtual",
-                email,
-                isVirtual: true,
-                timeStarted: timeStarted
-            }
-        )
-
-        await db.deliLibdb.collection('users').updateOne(
-            {
-                email: email
-            },
-            {
-                $set: {
-                    "seatNum": "Virtual-"+libName,
-                    "isSeated": true,
-                    "library": libName,
-                    "seatCollectionName": seatCollectionName,
-                    "timeStarted": timeStarted
+        }else {
+            await db.seatsDb.collection(seatCollectionName).insertOne(
+                {
+                    seatNum: "Virtual",
+                    group: "Virtual",
+                    email,
+                    isVirtual: true,
+                    timeStarted: timeStarted
                 }
-            })
-            .then(result => {
-                res.status(200).json({
-                    msg: "Virtual Desk Is Open Now"
+            )
+
+            await db.deliLibdb.collection('users').updateOne(
+                {
+                    email: email
+                },
+                {
+                    $set: {
+                        "seatNum": "Virtual-"+libName,
+                        "isSeated": true,
+                        "isVirtual": true,
+                        "library": libName,
+                        "seatCollectionName": seatCollectionName,
+                        "timeStarted": timeStarted
+                    }
                 })
-            })
+                .then(result => {
+                    res.status(200).json({
+                        msg: "Virtual Desk Is Open Now"
+                    })
+                })
+                .catch(err => {
+                    console.log(err)
+                    res.status(400).json({
+                        err
+                    })
+                }
+            )
+        }
     }
     catch(err){
         throw(err)
@@ -378,7 +431,7 @@ router.post('/deleteVirtual', auth, async (req,res) => {
         let date = user.timeStarted
         let date2 = new Date()
         
-        let totalTimeWorked = Math.ceil((date2 - date)/1000)+ user.totalTimeWorked;
+        let totalTimeStudied = Math.ceil((date2 - date)/1000)+ user.totalTimeStudied;
 
         await db.deliLibdb.collection('users').updateOne(
             {
@@ -388,9 +441,10 @@ router.post('/deleteVirtual', auth, async (req,res) => {
                 $set:{
                     "seatNum": "",
                     "isSeated": false,
+                    "isVirtual": false,
                     "library" : "",
                     "seatCollectionName": "",
-                    "totalTimeWorked": totalTimeWorked
+                    "totalTimeStudied": totalTimeStudied
                 }
             }
         )
